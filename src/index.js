@@ -17,11 +17,7 @@ app.use(express.json());
 app.get("/health", async (req, res) => {
   res.status(200).json({ message: "Server is in good health" });
 });
-// server.post("/matches", async (req, res) => {
-//   return res
-//     .status(200)
-//     .json({ message: "Server is in good health"});
-// });
+
 
 app.use("/matches", matchRouter);
 
