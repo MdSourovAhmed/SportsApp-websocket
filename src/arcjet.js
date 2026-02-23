@@ -3,9 +3,10 @@ import arcjet, { detectBot, shield, slidingWindow } from "@arcjet/node";
 const arcjetKey = process.env.ARCJET_KEY;
 const arcjetMode = process.env.ARCJET_MODE === "DRY_RUN" ? "DRY_RUN" : "LIVE";
 
-if (!arcjetKey)
-  throw new Error("ARCJET_KEY environment variable is missing...");
-
+if (!arcjetKey) {
+  //   throw new Error("ARCJET_KEY environment variable is missing...");
+  console.warn("ARCJET_KEY not set; Arcjet protection is disabled.");
+}
 export const httpArcjet = arcjetKey
   ? arcjet({
       key: arcjetKey,
@@ -45,7 +46,7 @@ export function securityMiddleware() {
         if (decision.reason.isRateLimit()) {
           return res.status(429).json({ error: "Too many requests..." });
         }
-        return res.status(503).json({ error: "Forbitten..." });
+        return res.status(503).json({ error: "Forbidden..." });
       }
     } catch (e) {
       console.error("Arcjet middleware error...", e);
@@ -55,3 +56,9 @@ export function securityMiddleware() {
     next();
   };
 }
+
+// for(let i=0;i<30;i++){
+//     const ws=new WebSocket("ws://localhost:7000/ws");
+//     ws.onopen=()=>console.log(`Socket ${i} opened`);
+//     ws.onclose=(e)=>console.log(`Socket ${i} closed: ${e.code} ${e.reason}`);
+// }
