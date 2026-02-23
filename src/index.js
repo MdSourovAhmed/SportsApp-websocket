@@ -4,6 +4,7 @@ import cors from "cors";
 import http from "http";
 import { matchRouter } from "./routes/matches.js";
 import { attachWebSocketServer } from "./ws/server.js";
+import { securityMiddleware } from "./arcjet.js";
 
 
 dotenv.config();
@@ -14,9 +15,11 @@ const server = http.createServer(app);
 app.use(cors());
 app.use(express.json());
 
+
 app.get("/health", async (req, res) => {
   res.status(200).json({ message: "Server is in good health" });
 });
+app.use(securityMiddleware());
 
 
 app.use("/matches", matchRouter);
