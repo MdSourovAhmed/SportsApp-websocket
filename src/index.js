@@ -17,7 +17,7 @@ app.use(express.json());
 app.use(
   helmet.contentSecurityPolicy({
     directives: {
-      "connect-src": ["'self'", "ws://localhost:7000"],
+      "connect-src": ["'self'", "WS_ORIGIN]"],
     },
   }),
 );
