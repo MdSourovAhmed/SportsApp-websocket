@@ -3,22 +3,32 @@ import { wsArcjet } from "../arcjet.js";
 
 function sendJson(socket, payload) {
   if (socket.readyState !== WebSocket.OPEN) return;
-
   socket.send(JSON.stringify(payload));
 }
 
 function broadcast(wss, payload) {
+  const data = JSON.stringify(payload);
+
   for (const client of wss.clients) {
     if (client.readyState !== WebSocket.OPEN) continue;
 
-    client.send(JSON.stringify(payload));
+    if (client.bufferedAmount > 1e6) {
+      console.warn("Slow client terminated");
+      client.terminate();
+      continue;
+    }
+
+    try {
+      client.send(data);
+    } catch (err) {
+      console.error("Broadcast error:", err);
+    }
   }
 }
 
 export function attachWebSocketServer(server) {
   const wss = new WebSocketServer({
-    server,
-    path: "/ws",
+    noServer: true, // ✅ important
     maxPayload: 1024 * 1024,
   });
 
@@ -52,7 +62,7 @@ export function attachWebSocketServer(server) {
       } catch (e) {
         console.error("WS upgrade protection error", e);
         socket.write(
-          "HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\n\r\n",
+          "HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\n\r\n"
         );
         socket.destroy();
         return;
@@ -60,15 +70,28 @@ export function attachWebSocketServer(server) {
     }
 
     wss.handleUpgrade(req, socket, head, (ws) => {
+      ws.meta = {
+        ip: req.socket.remoteAddress,
+        connectedAt: Date.now(),
+      };
+
       wss.emit("connection", ws, req);
     });
   });
 
   wss.on("connection", (ws) => {
     ws.isAlive = true;
+
+    sendJson(ws, { type: "welcome" });
+
     ws.on("pong", () => {
       ws.isAlive = true;
     });
+
+    ws.on("close", () => {
+      ws.isAlive = false;
+    });
+
     ws.on("error", (err) => {
       console.error("WebSocket client error", err);
     });
@@ -76,9 +99,13 @@ export function attachWebSocketServer(server) {
 
   const interval = setInterval(() => {
     wss.clients.forEach((ws) => {
-      if (ws.isAlive === false) return ws.terminate();
+      if (!ws.isAlive) {
+        ws.terminate();
+        return;
+      }
 
       ws.isAlive = false;
+
       if (ws.readyState === WebSocket.OPEN) {
         ws.ping();
       }
