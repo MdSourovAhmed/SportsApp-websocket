@@ -22,79 +22,46 @@ export function attachWebSocketServer(server) {
     maxPayload: 1024 * 1024,
   });
 
-  // wss.on("connection", async (socket, req) => {
-  //   if (wsArcjet) {
-  //     try {
-  //       const decesion = await wsArcjet.protect(req);
+  server.on("upgrade", async (req, socket, head) => {
+    let pathname;
 
-  //       if (decesion.isDenied()) {
-  //         const code = decesion.reason.isRateLimit() ? 1013 : 1003;
-  //         const reason = decesion.reason.isRateLimit()
-  //           ? "Rate limit exceeded..."
-  //           : "Access denies...";
+    try {
+      pathname = new URL(req.url, `http://${req.headers.host}`).pathname;
+    } catch {
+      socket.destroy();
+      return;
+    }
 
-  //         socket.close(code, reason);
-  //         return;
-  //       }
-  //     } catch (e) {
-  //       console.error("WS connection error...");
-  //       socket.close(1011, "Server security error...");
-  //       return;
-  //     }
-  //   }
+    if (pathname !== "/ws") return;
 
-  //   socket.isAlive = true;
-  //   socket.on("pong", () => {
-  //     socket.isAlive = true;
-  //   });
-  //   sendJson(socket, { type: "welcome" });
-
-  //   socket.on("error", console.error);
-  // });
-
-  wss.on("connection", async (socket, req) => {
     if (wsArcjet) {
       try {
         const decision = await wsArcjet.protect(req);
 
         if (decision.isDenied()) {
           const isRateLimit = decision.reason?.isRateLimit?.();
-          const code = isRateLimit ? 1013 : 1003;
-          const reason = isRateLimit
-            ? "Rate limit exceeded..."
-            : "Access denied...";
 
-          sendJson(socket, { type: "error", message: reason });
-          socket.close(code, reason);
+          const response = isRateLimit
+            ? "HTTP/1.1 429 Too Many Requests\r\nConnection: close\r\n\r\n"
+            : "HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n";
+
+          socket.write(response);
+          socket.destroy();
           return;
         }
       } catch (e) {
-        console.error("WS connection error:", e);
-        socket.close(1011, "Server security error...");
+        console.error("WS upgrade protection error", e);
+        socket.write(
+          "HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\n\r\n",
+        );
+        socket.destroy();
         return;
       }
     }
 
-    socket.isAlive = true;
-
-    socket.clientInfo = {
-      ip: req.socket.remoteAddress,
-      connectedAt: Date.now(),
-    };
-
-    socket.on("pong", () => {
-      socket.isAlive = true;
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit("connection", ws, req);
     });
-
-    socket.on("close", () => {
-      socket.isAlive = false;
-    });
-
-    socket.on("error", (err) => {
-      console.error("Socket error:", err);
-    });
-
-    sendJson(socket, { type: "welcome" });
   });
 
   const interval = setInterval(() => {
@@ -102,7 +69,6 @@ export function attachWebSocketServer(server) {
       if (ws.isAlive === false) return ws.terminate();
 
       ws.isAlive = false;
-      // ws.ping();
       if (ws.readyState === WebSocket.OPEN) {
         ws.ping();
       }
