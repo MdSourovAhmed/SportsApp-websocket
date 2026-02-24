@@ -69,6 +69,9 @@ export function attachWebSocketServer(server) {
     ws.on("pong", () => {
       ws.isAlive = true;
     });
+    ws.on("error", (err) => {
+      console.error("WebSocket client error", err);
+    });
   });
 
   const interval = setInterval(() => {
