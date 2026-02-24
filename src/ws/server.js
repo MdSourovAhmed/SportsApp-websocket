@@ -22,34 +22,79 @@ export function attachWebSocketServer(server) {
     maxPayload: 1024 * 1024,
   });
 
+  // wss.on("connection", async (socket, req) => {
+  //   if (wsArcjet) {
+  //     try {
+  //       const decesion = await wsArcjet.protect(req);
+
+  //       if (decesion.isDenied()) {
+  //         const code = decesion.reason.isRateLimit() ? 1013 : 1003;
+  //         const reason = decesion.reason.isRateLimit()
+  //           ? "Rate limit exceeded..."
+  //           : "Access denies...";
+
+  //         socket.close(code, reason);
+  //         return;
+  //       }
+  //     } catch (e) {
+  //       console.error("WS connection error...");
+  //       socket.close(1011, "Server security error...");
+  //       return;
+  //     }
+  //   }
+
+  //   socket.isAlive = true;
+  //   socket.on("pong", () => {
+  //     socket.isAlive = true;
+  //   });
+  //   sendJson(socket, { type: "welcome" });
+
+  //   socket.on("error", console.error);
+  // });
+
   wss.on("connection", async (socket, req) => {
     if (wsArcjet) {
       try {
-        const decesion = await wsArcjet.protect(req);
+        const decision = await wsArcjet.protect(req);
 
-        if (decesion.isDenied()) {
-          const code = decesion.reason.isRateLimit() ? 1013 : 1003;
-          const reason = decesion.reason.isRateLimit()
+        if (decision.isDenied()) {
+          const isRateLimit = decision.reason?.isRateLimit?.();
+          const code = isRateLimit ? 1013 : 1003;
+          const reason = isRateLimit
             ? "Rate limit exceeded..."
-            : "Access denies...";
+            : "Access denied...";
 
+          sendJson(socket, { type: "error", message: reason });
           socket.close(code, reason);
           return;
         }
       } catch (e) {
-        console.error("WS connection error...");
+        console.error("WS connection error:", e);
         socket.close(1011, "Server security error...");
         return;
       }
     }
 
     socket.isAlive = true;
+
+    socket.clientInfo = {
+      ip: req.socket.remoteAddress,
+      connectedAt: Date.now(),
+    };
+
     socket.on("pong", () => {
       socket.isAlive = true;
     });
-    sendJson(socket, { type: "welcome" });
 
-    socket.on("error", console.error);
+    socket.on("close", () => {
+      socket.isAlive = false;
+    });
+
+    socket.on("error", (err) => {
+      console.error("Socket error:", err);
+    });
+
+    sendJson(socket, { type: "welcome" });
   });
 
   const interval = setInterval(() => {
