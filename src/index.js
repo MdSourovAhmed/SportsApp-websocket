@@ -4,6 +4,7 @@ import cors from "cors";
 import http from "http";
 import helmet from "helmet";
 import { matchRouter } from "./routes/matches.js";
+import { commentaryRouter } from "./routes/commentary.js";
 import { attachWebSocketServer } from "./ws/server.js";
 import { securityMiddleware } from "./arcjet.js";
 
@@ -28,9 +29,12 @@ app.get("/health", async (req, res) => {
 app.use(securityMiddleware());
 
 app.use("/matches", matchRouter);
+app.use("/matches/:id/commentary", commentaryRouter);
 
-const { broadcastMatchCreated } = attachWebSocketServer(server);
+const { broadcastMatchCreated, broadcastCommentary } =
+  attachWebSocketServer(server);
 app.locals.broadcastMatchCreated = broadcastMatchCreated;
+app.locals.broadcastCommentary = broadcastCommentary;
 
 const PORT = process.env.PORT || 7000;
 const HOST = process.env.HOST || "0.0.0.0";
