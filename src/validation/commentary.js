@@ -42,10 +42,10 @@ export const listCommentaryQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).optional(),
 });
 
-export const createCommentrySchema = z.object({
+export const createCommentarySchema  = z.object({
   sport: z.string().min(1),
-  minute: z.number().int().nonnegative(),
-  sequence: z.number().int().optional(),
+  minute: z.coerce.number().int().nonnegative(),
+  sequence: z.coerce.number().int().optional(),
   period: z.string().optional(),
   eventType: z.string().optional(),
   actor: z.string().optional(),

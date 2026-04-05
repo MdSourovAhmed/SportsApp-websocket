@@ -7,7 +7,7 @@ import {
 import { matches } from "../db/schema.js";
 import { db } from "../db/db.js";
 import { getMatchStatus, syncMatchStatus } from "../utils/match-status.js";
-import { desc } from "drizzle-orm";
+import { desc,eq } from "drizzle-orm";
 
 export const matchRouter = Router();
 
@@ -80,18 +80,18 @@ matchRouter.post("/", async (req, res) => {
 matchRouter.patch("/:id/score", async (req, res) => {
   // res.status(200).json({message:'Matches List...'});
 
-  const paramsParsed = createMatchSchema.safeParse(req.params);
+  const paramsParsed = matchIdParamSchema.safeParse(req.params);
   if (!paramsParsed.success) {
     return res.status(400).json({
       error: "Invalied match Id",
       // details: JSON.stringify(parsed.error),
-      details: formatZodError(parsed.error),
+      details: formatZodError(paramsParsed.error),
     });
   }
-  const parsed = createMatchSchema.safeParse(req.body);
+  const parsed = updateScoreSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
-      error: "Invalied Payload",
+      error: "Invalid Payload",
       // details: JSON.stringify(parsed.error),
       details: formatZodError(parsed.error),
     });
@@ -141,7 +141,7 @@ matchRouter.patch("/:id/score", async (req, res) => {
       });
     }
 
-    res.status(201).json({ data: updated });
+    res.status(200).json({ data: updated });
   } catch (error) {
     return res.status(500).json({
       error: "Failed to update score",

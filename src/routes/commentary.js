@@ -2,12 +2,12 @@ import { Router } from "express";
 
 import { commentry } from "../db/schema.js";
 import {
-  createCommentrySchema,
+  createCommentarySchema,
   listCommentaryQuerySchema,
 } from "../validation/commentary.js";
 import { matchIdParamSchema } from "../validation/matches.js";
 import { db } from "../db/db.js";
-import { eq } from "drizzle-orm";
+import { desc,eq } from "drizzle-orm";
 
 // const router = express.Router();
 export const commentaryRouter = Router({ mergeParams: true });
@@ -15,7 +15,7 @@ export const commentaryRouter = Router({ mergeParams: true });
 const MAX_LIMIT = 100;
 
 commentaryRouter.get("/", async (req, res) => {
-  res.status(200).json({ message: "Commentary List..." });
+  console.log("Serving Commentary List...");
 
   const paramsResult = matchIdParamSchema.safeParse(req.params);
   if (!paramsResult.success) {
@@ -59,7 +59,7 @@ commentaryRouter.post("/", async (req, res) => {
       .status(400)
       .json({ error: "Invalied match Id", details: paramResult.error.issues });
   }
-  const bodyResult = createCommentrySchema.safeParse(req.body);
+  const bodyResult = createCommentarySchema.safeParse(req.body);
 
   if (!bodyResult.success) {
     return res.status(400).json({
@@ -69,16 +69,6 @@ commentaryRouter.post("/", async (req, res) => {
   }
 
   try {
-    // const parsed = createCommentrySchema.safeParse(req.body);
-
-    // if (!parsed.success) {
-    //   return res.status(400).json({
-    //     error: "Invalid request",
-    //     details: parsed.error.flatten(),
-    //   });
-    // }
-
-    // const data = parsed.data;
     const { minute, ...rest } = bodyResult.data;
     const [result] = await db
       .insert(commentry)
@@ -89,13 +79,24 @@ commentaryRouter.post("/", async (req, res) => {
       })
       .returning();
 
-    if (res.app.locals.broadcastCommentary) {
-      res.app.locals.broadcastCommentary(result.matchId, result);
+    try {
+      res.app.locals.broadcastCommentary?.(result.matchId, result);
+    } catch (broadcastError) {
+      console.error("Broadcast commentary error:", broadcastError);
     }
 
     res.status(201).json({ data: result });
   } catch (error) {
     console.error("Create commentary error:", error);
+
+    // Detect Postgres foreign key violation from db.insert(commentry).values(...)
+    if (
+      error?.code === "23503" ||
+      error?.message?.toLowerCase().includes("foreign key") ||
+      error?.message?.includes("commentry_match_id")
+    ) {
+      return res.status(404).json({ error: "Match not found" });
+    }
 
     res.status(500).json({
       error: "Failed to create commentary.",

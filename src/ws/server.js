@@ -69,6 +69,7 @@ function handleMessage(socket, data) {
     message = JSON.parse(data.toString());
   } catch {
     sendJson(socket, { type: "error", message: "Invalid JSON" });
+    return;
   }
 
   if (message?.type === "subscribe" && Number.isInteger(message.matchId)) {
@@ -188,7 +189,7 @@ export function attachWebSocketServer(server) {
   }
 
   function broadcastCommentary(matchId, comment) {
-    broadcastToMatch(wss, { type: "commentary", data: comment });
+    broadcastToMatch(matchId, { type: "commentary", data: comment });
   }
 
   return { broadcastMatchCreated, broadcastCommentary };
