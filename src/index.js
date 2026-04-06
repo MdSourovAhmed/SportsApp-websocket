@@ -47,3 +47,6 @@ server.listen(PORT, HOST, () => {
     `WebSocket Server is running at: ${baseUrl.replace("http", "ws")}/ws`,
   );
 });
+
+
+// npm run db:migrate 

@@ -2,10 +2,13 @@ import { WebSocket, WebSocketServer } from "ws";
 import { wsArcjet } from "../arcjet.js";
 
 const matchSubscribers = new Map();
+const MAX_SUBSCRIPTIONS_PER_SOCKET = 100;
+
 
 function subscribe(matchId, socket) {
   if (!matchSubscribers.has(matchId)) {
     matchSubscribers.set(matchId, new Set());
+
   }
   matchSubscribers.get(matchId).add(socket);
 }
@@ -14,7 +17,7 @@ function unsubscribe(matchId, socket) {
   const subscribers = matchSubscribers.get(matchId);
   if (!subscribers) return;
 
-  subscribers.delete(socket);
+  subscribers.delete(socket); 
   if (subscribers.size === 0) {
     matchSubscribers.delete(matchId);
   }
@@ -57,8 +60,22 @@ function broadcastToMatch(matchId, payload) {
 
   const message = JSON.stringify(payload);
   for (const client of subscribers) {
-    if (client.readyState === WebSocket.OPEN) {
+    // if (client.readyState === WebSocket.OPEN) {
+    //   client.send(message);
+    // }
+
+    if (client.readyState !== WebSocket.OPEN) continue;
+    if (client.bufferedAmount > 1e6) {
+      console.warn("Slow match subscriber terminated");
+      client.terminate();
+      continue;
+    }
+
+    try {
       client.send(message);
+    } catch (err) {
+      console.error("BroadcastToMatch error:", err);
+      client.terminate();
     }
   }
 }
