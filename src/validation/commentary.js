@@ -36,6 +36,9 @@
 //   tags: z.array(z.string()).optional(),
 // });
 
+
+//validation/commentary.js
+
 import { z } from "zod";
 
 export const listCommentaryQuerySchema = z.object({

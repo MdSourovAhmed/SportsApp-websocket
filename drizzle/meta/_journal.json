@@ -5,15 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1771217744011,
-      "tag": "0000_broad_vermin",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1775325154963,
-      "tag": "0001_brief_lord_tyger",
+      "when": 1775499641621,
+      "tag": "0000_curved_sentry",
       "breakpoints": true
     }
   ]

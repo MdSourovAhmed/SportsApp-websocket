@@ -100,3 +100,11 @@ export const commentry = pgTable("commentry", {
   tags: text("tags").array(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+
+// export const sportsUpdates = pgTable("sports_updates", {
+//   id: serial("id").primaryKey(),
+//   match: varchar("match").notNull(),
+//   score: varchar("score").notNull(),
+//   eventTime: timestamp("event_time").defaultNow(),
+// });

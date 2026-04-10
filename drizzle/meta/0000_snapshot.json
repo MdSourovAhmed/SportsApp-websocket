@@ -1,5 +1,5 @@
 {
-  "id": "a1968b97-aee3-49a9-b4c8-e54c1d75ab44",
+  "id": "762c741a-4d46-44e9-8f72-72806a8abba9",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -16,7 +16,7 @@
         },
         "match_id": {
           "name": "match_id",
-          "type": "serial",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
@@ -177,44 +177,6 @@
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.sports_updates": {
-      "name": "sports_updates",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "match": {
-          "name": "match",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "score": {
-          "name": "score",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "event_time": {
-          "name": "event_time",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
           "default": "now()"
         }
       },
