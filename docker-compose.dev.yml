@@ -1,0 +1,95 @@
+# ── Development docker-compose ────────────────────────────────────────────
+# Runs the full stack locally with hot-module replacement on both the
+# frontend (Vite HMR) and backend (node --watch).
+#
+# Usage:
+#   cp .env.example .env      # fill in secrets
+#   docker compose -f docker-compose.dev.yml up --build
+#
+# After first run you can drop --build unless you change package.json.
+# Migrations:
+#   docker compose -f docker-compose.dev.yml exec backend npm run db:generate
+#   docker compose -f docker-compose.dev.yml exec backend npm run db:migrate
+
+name: arena-live-dev
+
+services:
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${POSTGRES_USER:-arena}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-arena_dev_pass}
+      POSTGRES_DB:       ${POSTGRES_DB:-arena_live}
+    ports:
+      # Expose on the host so you can connect with psql or a GUI like TablePlus
+      - "5432:5432"
+    volumes:
+      # Named volume so data survives docker compose down
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-arena} -d ${POSTGRES_DB:-arena_live}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ── Backend (Node.js + Express + Drizzle) ─────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      # Use the "development" stage from the Dockerfile so node_modules is
+      # included in the image but source code is mounted from the host.
+      target: development
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "7000:7000"
+    environment:
+      NODE_ENV:     development
+      PORT:         7000
+      HOST:         0.0.0.0
+      DATABASE_URL: postgresql://${POSTGRES_USER:-arena}:${POSTGRES_PASSWORD:-arena_dev_pass}@postgres:5432/${POSTGRES_DB:-arena_live}
+      CORS_ORIGINS: http://localhost:5173
+      WS_ORIGIN:    ws://localhost:5173
+      # Arcjet — leave blank to disable protection in dev
+      ARCJET_KEY:   ${ARCJET_KEY:-}
+      ARCJET_MODE:  DRY_RUN
+    volumes:
+      # Bind-mount the source directory so --watch picks up file changes
+      # without rebuilding the image.
+      - ./backend/src:/app/src:ro
+      # Prevent the host node_modules from shadowing the container's
+      # (anonymous volume trick — Docker fills it from the image layer)
+      - /app/node_modules
+
+  # ── Frontend (Vite dev server) ─────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      target: development
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+    environment:
+      # Vite reads these as import.meta.env.VITE_* at runtime in dev mode
+      VITE_API_URL:        http://backend:7000
+      VITE_WS_URL:         ws://backend:7000/ws
+      VITE_ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+    volumes:
+      # Bind-mount source for HMR
+      - ./frontend/src:/app/src:ro
+      - ./frontend/index.html:/app/index.html:ro
+      # - ./frontend/tailwind.config.js:/app/tailwind.config.js:ro
+      # - ./frontend/postcss.config.js:/app/postcss.config.js:ro
+      - ./frontend/vite.config.js:/app/vite.config.js:ro
+      - /app/node_modules
+
+volumes:
+  postgres_dev_data:
